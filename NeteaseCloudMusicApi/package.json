@@ -1,0 +1,24 @@
+{
+  "name": "neteasecloudmusicapi",
+  "version": "1.0.0",
+  "description": "保护版权,此仓库不再维护",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Binaryify/NeteaseCloudMusicApi.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Binaryify/NeteaseCloudMusicApi/issues"
+  },
+  "homepage": "https://github.com/Binaryify/NeteaseCloudMusicApi#readme",
+  "dependencies": {
+    "NeteaseCloudMusicApi": "^4.32.0"
+  }
+}
