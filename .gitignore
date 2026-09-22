@@ -1,0 +1,180 @@
+
+# Created by https://www.toptal.com/developers/gitignore/api/python
+# Edit at https://www.toptal.com/developers/gitignore?templates=python
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+doc/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+temp_repos/
+
+# ======================================================================
+# Xiaoyo Bot — 本地私有 / 可再生成内容（请勿提交）
+# ======================================================================
+
+# --- 本地私有配置备份（含密钥模板，勿公开） ---
+.env.save
+.env.*.save
+*.env.save
+
+# --- 运行时依赖，可由 npm / pip 重建 ---
+node_modules/
+NeteaseCloudMusicApi/node_modules/
+
+# --- 第三方仓库克隆（自带 .git，勿嵌入主仓库） ---
+server/
+NeteaseCloudMusicApi_new/
+
+# --- 备份副本 ---
+NeteaseCloudMusicApi_bak/
+*.bak
+*.bak-*
+
+# --- 日志、临时与缓存 ---
+logs/
+
+# --- 用户数据 / 运行时数据库（含 QQ 号等隐私；Bot 会自动重建） ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- 每日 04:00 自动下载的数据（插件自行获取+本地缓存，非源码；抓取失败会自动降级用缓存） ---
+#     保留 local_music_alias.json(自建别名) 与 group_guess_switch.json(群设置) —— 那两项是用户数据
+storage/maimai/data/merge_music_alias.json
+storage/maimai/data/merge_music_data.json
+storage/maimai/data/music_alias.json
+storage/maimai/data/music_chart.json
+storage/maimai/data/music_data.json
+storage/maimai/data/plate_data.json
