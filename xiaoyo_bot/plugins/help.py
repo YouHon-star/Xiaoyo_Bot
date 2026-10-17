@@ -1,5 +1,14 @@
+"""普通用户帮助：按是否在「科技白名单」发不同的图。
+
+· 科技白名单/管理员 → storage/help_images/help_tech.jpg（含科技功能）
+· 其他人           → storage/help_images/help_normal.jpg（不含科技功能）
+图片缺失时退回文字版，保证 help 永不挂掉。
+"""
+
+from pathlib import Path
+
 from nonebot import on_command
-from nonebot.adapters.onebot.v11 import MessageEvent
+from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 
 # 普通用户帮助指令
 help_cmd = on_command("小幽帮助", aliases={"help"}, priority=3, block=True)
@@ -9,30 +18,45 @@ dev_help_cmd = on_command(
     "小幽开发者帮助", aliases={"开发者帮助"}, priority=3, block=True
 )
 
+IMG_DIR = Path("/home/xiaoyo/Xiaoyo_Bot/storage/help_images")
+IMG_TECH = IMG_DIR / "help_tech.jpg"
+IMG_NORMAL = IMG_DIR / "help_normal.jpg"
+
+# 图片都读不到时的兜底文字
+HELP_FALLBACK = (
+    "小幽功能简介\n\n"
+    "B50（获取成绩图）\n分数列表（指定分数成绩图）\n今日舞萌（出勤运势）\n"
+    "xx是什么歌（查询歌曲）\nidxxx（歌曲ID查询）\n猜歌（发送「猜歌帮助」查看玩法）\n"
+    "更新b50（同步成绩到查分器）\n\n"
+    "群聊娱乐：牛牛大作战（需管理员开启）\n音乐：小幽获取歌曲+歌名\n\n"
+    "有问题请联系幽鸿（1923497173）"
+)
+
+
+def in_tech_list(uid: int) -> bool:
+    """是否在科技白名单（管理员视为在内）。"""
+    try:
+        from xiaoyo_bot.plugins.mai_modify import tier_of  # 延迟导入，避免循环依赖
+        return tier_of(uid) in ("admin", "tech")
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def pick_help_image(uid: int) -> Path | None:
+    img = IMG_TECH if in_tech_list(uid) else IMG_NORMAL
+    if not img.exists():                      # 另一张在就用另一张，不回空
+        img = IMG_NORMAL if img == IMG_TECH else IMG_TECH
+    return img if img.exists() else None
+
 
 @help_cmd.handle()
-async def handle_help(_event: MessageEvent) -> None:
-    """发送普通用户帮助信息，包含所有普通用户能使用的功能和指令"""
-    help_msg = """
-✝️小幽功能简介✝️
-
-B50（获取成绩图）
-分数列表（指定分数成绩图）
-今日舞萌（出勤运势）
-xx是什么歌（查询歌曲）
-idxxx（歌曲ID查询）
-猜歌（发送猜歌帮助查看玩法，支持开字母/听歌猜曲/谱面猜歌/猜曲绘/线索猜歌/随机猜歌）
-以下是测试功能：
-小幽获取视频+某酷/某艺想观看的视频链接（获取无广vip视频链接  
-小幽获取歌曲+歌名
-直发某抑云无损音质歌曲
-但不稳有时会失败比较抽奖）
-关于AI聊天和回复暂不开放
-（预计寒假回归）
-bot主是傻福学生加急补作业中
-可以请bot打舞萌嗯对👁👄👁
-    """
-    await help_cmd.finish(help_msg)
+async def handle_help(event: MessageEvent) -> None:
+    """发帮助图：科技白名单一张，其他人另一张。"""
+    img = pick_help_image(event.user_id)
+    if img is None:
+        await help_cmd.finish(HELP_FALLBACK)
+        return
+    await help_cmd.finish(MessageSegment.image(img.read_bytes()))
 
 
 @dev_help_cmd.handle()

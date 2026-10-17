@@ -108,7 +108,7 @@ async def handle_add_arcade(event: MessageEvent) -> None:
     if not name:
         await add_arcade.finish(
             "❌ 请带上机厅名称\n\n用法：小幽添加机厅+机厅名称\n"
-            "例：小幽添加机厅+环游嘉年华"
+            "例：小幽添加机厅+赛博时空"
         )
 
     if len(name) > 20:

@@ -12,10 +12,11 @@
 import asyncio
 import json
 import re
+import time
 from pathlib import Path
 
-from nonebot import on_command
-from nonebot.adapters.onebot.v11 import Event, GroupMessageEvent, MessageEvent
+from nonebot import get_driver, on_command
+from nonebot.adapters.onebot.v11 import Bot, Event, GroupMessageEvent, MessageEvent
 from nonebot.exception import IgnoredException
 from nonebot.message import event_preprocessor
 from nonebot.plugin import PluginMetadata
@@ -29,6 +30,7 @@ __plugin_meta__ = PluginMetadata(
 # ====================== 配置 ======================
 OWNER_QQ = 1923497173  # 主人QQ号
 DATA_FILE = Path("storage/permissions.json")  # 数据存储文件
+RESTART_NOTICE_FILE = Path("storage/restart_notice.json")  # 重启完成后要回执的会话
 
 # ====================== 状态管理 ======================
 bot_enabled = True
@@ -132,10 +134,54 @@ async def handle_restart(event: MessageEvent) -> None:
     if not is_owner(event.user_id):
         await restart_bot.finish("❌ 权限不足")
 
+    # 记下"从哪触发"——重启完成后要回同一条会话报平安（见下方 on_bot_connect）
+    RESTART_NOTICE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    RESTART_NOTICE_FILE.write_text(
+        json.dumps(
+            {
+                "group_id": event.group_id if isinstance(event, GroupMessageEvent) else None,
+                "user_id": event.user_id,
+                "ts": time.time(),
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
     await restart_bot.send("🔄 小幽重启中...")
     await asyncio.sleep(1)
     save_data()
     raise SystemExit("主人触发重启")
+
+
+# ====================== 重启完成回执 ======================
+driver = get_driver()
+
+
+@driver.on_bot_connect
+async def notify_restart_done(bot: Bot) -> None:
+    """重启后重新连上 NapCat 时，回触发处报平安。
+
+    只有「重启bot」触发过才会留下 RESTART_NOTICE_FILE；正常启动没有这个文件，不发。
+    """
+    if not RESTART_NOTICE_FILE.exists():
+        return
+
+    try:
+        info = json.loads(RESTART_NOTICE_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        info = {}
+    RESTART_NOTICE_FILE.unlink(missing_ok=True)
+
+    took = time.time() - float(info.get("ts") or time.time())
+    msg = "✅ 小幽重启完成" if took > 600 else f"✅ 小幽重启完成（用时 {took:.0f} 秒）"
+    try:
+        if info.get("group_id"):
+            await bot.send_group_msg(group_id=info["group_id"], message=msg)
+        elif info.get("user_id"):
+            await bot.send_private_msg(user_id=info["user_id"], message=msg)
+    except Exception:  # noqa: BLE001  —— 回执失败不该影响启动
+        pass
 
 
 black_add = on_command("拉黑", priority=2, block=True)
