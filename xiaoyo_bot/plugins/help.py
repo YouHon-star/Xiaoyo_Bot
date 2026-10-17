@@ -11,7 +11,9 @@ from nonebot import on_command
 from nonebot.adapters.onebot.v11 import MessageEvent, MessageSegment
 
 # 普通用户帮助指令
-help_cmd = on_command("小幽帮助", aliases={"help"}, priority=3, block=True)
+# ⚠ 适配器会先把开头的昵称「小幽」剥掉（_check_nickname），所以实际进 TrieRule 的是「帮助」，
+# 必须显式给 帮助 这个别名，否则用户发「小幽帮助」永远匹配不到。
+help_cmd = on_command("小幽帮助", aliases={"帮助", "help", "功能"}, priority=3, block=True)
 
 # 开发者功能帮助指令
 dev_help_cmd = on_command(
