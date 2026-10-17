@@ -187,7 +187,11 @@ class ScoreBaseImage(AssetsImage):
                 anchor="mm",
             )
 
-            ds = mai.total_level_value_map.get(f"{info.song_id}-{li}", 0)
+            # 优先使用本条记录自带的定数（拟合50 会在重算时改写它），
+            # 保证图上「定数 -> 单曲Rating」两者自洽；取不到时回退官方定数表。
+            ds = info.level_value or mai.total_level_value_map.get(
+                f"{info.song_id}-{li}", 0
+            )
             self._tb.draw(
                 x + 93,
                 y + 65,

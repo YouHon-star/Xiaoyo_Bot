@@ -178,3 +178,10 @@ storage/maimai/data/music_alias.json
 storage/maimai/data/music_chart.json
 storage/maimai/data/music_data.json
 storage/maimai/data/plate_data.json
+
+# --- secrets & runtime state (never commit) ---
+.env
+.env.*
+*.env.bak*
+storage/*.json
+storage/maimai/mai/plate_table/

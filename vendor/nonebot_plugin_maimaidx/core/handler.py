@@ -359,11 +359,36 @@ async def draw_best50(
         `MessageSegment`
     """
     player, best50 = await get_best50(user, username=username, all_perfect=all_perfect)
+    return await draw_best50_data(user, player, best50, icon=icon)
+
+
+async def draw_best50_data(
+    user: User,
+    player: Player,
+    best50: Best50,
+    *,
+    icon: str | None = None,
+    message: str = MESSAGE,
+) -> MessageSegment:
+    """
+    用已有的 player / best50 数据绘制 Best50（不重新拉取）
+
+    供「拟合50」等需要对数据二次处理后绘图的场景复用。
+
+    Params:
+        `user`: 用户 `User` 模型
+        `player`: 玩家信息（其 `rating` 决定图上显示的 Rating）
+        `best50`: Best50 数据
+        `icon`: 头像
+        `message`: 图片后附带的文字
+    Returns:
+        `MessageSegment`
+    """
     b50 = PlayerBest50(user, player=player, best50=best50, icon=icon)
 
     loop = asyncio.get_running_loop()
     image = await loop.run_in_executor(_RENDER_POOL, lambda: asyncio.run(b50.draw()))
-    return MessageSegment.image(image) + MessageSegment.text(MESSAGE)
+    return MessageSegment.image(image) + MessageSegment.text(message)
 
 
 @handle_errors

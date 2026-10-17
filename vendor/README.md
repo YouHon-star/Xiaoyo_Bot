@@ -26,6 +26,10 @@
 | 绘制中提示 | `commands/*.py` | 所有发图指令绘制前先发「正在绘制中，请稍候…」，共 20 处 |
 | 容错 | `__init__.py` | 启动流程加 `try/except`，避免单点失败拖垮加载 |
 | @查成绩 | `commands/depend.py`、`commands/mai_base.py` | `GetOrCreateSender`（allow_at=False）用于「作用于发送者自己」的指令；查询类走 `GetOrCreateUser`（allow_at=True）自动支持 @ 他人 |
+| **拟合50（精确版）** | `commands/mai_score.py`、`core/handler.py` | 新增 `拟合50` 指令（别名 `拟50`/`拟b50`/`拟合b50`/`拟合B50`/`fit50`/`Fit50`）：用社区拟合定数 `fit_diff` 代替官方定数重算 Best50。**默认走精确版**——拉取用户全部成绩逐条重算后各取 Top 35/15；全量成绩获取失败时回退近似版（仅重排官方 Top N）。`handler.py` 抽出 `draw_best50_data` 以便复用绘制 |
+| **水鱼 AP50** | `commands/mai_score.py` | `ap50` 原仅支持落雪；现水鱼也可用：拉取全部成绩 → 只保留 AP/AP+ → 按官方定数重算 All Perfect 50（Top 35/15）。落雪仍走原生 `/bests/ap` 接口 |
+| **B35/B15 分组依据** | `commands/mai_score.py` | ⚠️ 旧曲/新曲按 **`Song.isnew`**（是否当前版本新曲）划分，**不是**谱面类型 SD/DX —— 旧版本的 DX 谱面属于旧曲组(进 B35)。已用官方 b50 实测核对（官方 sd 组 35 条 `isnew` 全 False 含 31 条 DX 谱面，dx 组 15 条全 True） |
+| 定数显示自洽 | `core/image/base.py` | `whiledraw` 的「定数 -> 单曲Rating」改为优先用 `info.level_value`（拟合50 会改写它），否则回退官方定数表。普通 b50 值不变 |
 
 ## 绘制中提示的 20 处分布
 
