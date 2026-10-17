@@ -35,17 +35,20 @@ HELP_FALLBACK = (
 )
 
 
-def in_tech_list(uid: int) -> bool:
-    """是否在科技白名单（管理员视为在内）。"""
+def in_tech_list(uid: int, gid: int | None = None) -> bool:
+    """是否**在这个会话里**具备科技身份：科技白名单 + 群也在科技群里（私聊不受群限制）。
+
+    群聊里没被允许的群 → 科技白名单用户也降级成普通人，help 一律出普通版。
+    """
     try:
-        from xiaoyo_bot.plugins.mai_modify import tier_of  # 延迟导入，避免循环依赖
-        return tier_of(uid) in ("admin", "tech")
+        from xiaoyo_bot.plugins.mai_modify import eff_tier  # 延迟导入，避免循环依赖
+        return eff_tier(uid, gid) in ("admin", "tech")
     except Exception:  # noqa: BLE001
         return False
 
 
-def pick_help_image(uid: int) -> Path | None:
-    img = IMG_TECH if in_tech_list(uid) else IMG_NORMAL
+def pick_help_image(uid: int, gid: int | None = None) -> Path | None:
+    img = IMG_TECH if in_tech_list(uid, gid) else IMG_NORMAL
     if not img.exists():                      # 另一张在就用另一张，不回空
         img = IMG_NORMAL if img == IMG_TECH else IMG_TECH
     return img if img.exists() else None
@@ -53,8 +56,9 @@ def pick_help_image(uid: int) -> Path | None:
 
 @help_cmd.handle()
 async def handle_help(event: MessageEvent) -> None:
-    """发帮助图：科技白名单一张，其他人另一张。"""
-    img = pick_help_image(event.user_id)
+    """发帮助图：科技白名单 + 已允许的群 → 科技版，其余一律普通版。"""
+    gid = getattr(event, "group_id", None)
+    img = pick_help_image(event.user_id, int(gid) if gid is not None else None)
     if img is None:
         await help_cmd.finish(HELP_FALLBACK)
         return
