@@ -1,7 +1,7 @@
-"""普通用户帮助：按是否在「科技白名单」发不同的图。
+"""普通用户帮助：按「当前会话里是否具备科技身份」发不同的图。
 
-· 科技白名单/管理员 → storage/help_images/help_tech.jpg（含科技功能）
-· 其他人           → storage/help_images/help_normal.jpg（不含科技功能）
+· 科技白名单 / 管理员（且群已授权） → storage/help_images/help_tech.jpg（含科技功能）
+· 其他人，以及「群未授权」的会话       → storage/help_images/help_normal.jpg（不含科技功能）
 图片缺失时退回文字版，保证 help 永不挂掉。
 """
 
@@ -36,10 +36,9 @@ HELP_FALLBACK = (
 
 
 def in_tech_list(uid: int, gid: int | None = None) -> bool:
-    """是否**在这个会话里**具备科技身份：必须在「科技白名单」里，且（群聊时）群也在科技群里。
+    """是否**在这个会话里**具备科技身份：科技白名单或管理员，且（群聊时）群在科技群里。
 
-    判定只认科技白名单 —— 管理员若不在科技白名单，同样出普通版。
-    私聊不受群限制；群聊里没被允许的群 → 科技白名单用户也降级成普通人。
+    群维度对管理员同样生效：群未授权 → 出普通版。私聊不受群限制。
     """
     try:
         from xiaoyo_bot.plugins.mai_modify import eff_tier  # 延迟导入，避免循环依赖
