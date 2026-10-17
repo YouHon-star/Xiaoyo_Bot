@@ -36,13 +36,14 @@ HELP_FALLBACK = (
 
 
 def in_tech_list(uid: int, gid: int | None = None) -> bool:
-    """是否**在这个会话里**具备科技身份：科技白名单 + 群也在科技群里（私聊不受群限制）。
+    """是否**在这个会话里**具备科技身份：必须在「科技白名单」里，且（群聊时）群也在科技群里。
 
-    群聊里没被允许的群 → 科技白名单用户也降级成普通人，help 一律出普通版。
+    判定只认科技白名单 —— 管理员若不在科技白名单，同样出普通版。
+    私聊不受群限制；群聊里没被允许的群 → 科技白名单用户也降级成普通人。
     """
     try:
         from xiaoyo_bot.plugins.mai_modify import eff_tier  # 延迟导入，避免循环依赖
-        return eff_tier(uid, gid) in ("admin", "tech")
+        return eff_tier(uid, gid) == "tech"
     except Exception:  # noqa: BLE001
         return False
 
