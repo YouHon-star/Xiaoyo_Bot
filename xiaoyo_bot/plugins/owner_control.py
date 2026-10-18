@@ -268,7 +268,11 @@ view_admin = on_command("查看管理", aliases={"管理员列表"}, priority=2,
 
 
 @view_admin.handle()
-async def handle_view_admin() -> None:
+async def handle_view_admin(event: MessageEvent) -> None:
+    # ★ 2026-10-18：以前这里没有权限判断，谁发都能拿到全部管理员 QQ 号。
+    #   管理帮助写明「仅管理员可见」，这条也得配套（否则名单等于公开）。
+    if not is_admin(event.user_id):
+        await view_admin.finish("❌ 权限不足")
     if admin_list:
         admins = "\n".join(f"  • {qq}" for qq in sorted(admin_list))
         msg = f"📋 管理员列表\n👑 主人：{OWNER_QQ}\n👮 管理：\n{admins}"
