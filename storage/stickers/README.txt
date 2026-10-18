@@ -1,7 +1,14 @@
-这个目录放小幽的随机表情包素材。
+小幽表情包 · 素材说明
 
-· 支持 jpg / jpeg / png / gif / webp / bmp
-· 丢进来就生效（不用重启，每次抽的时候现读目录）
-· 目录为空时，会自动改用「群友发过的表情」缓存（storage/sticker_cache.json）
-· 触发概率 2%（每条群消息），同群最短间隔 180 秒
-  想调数值就改 xiaoyo_bot/plugins/sticker.py 顶部的 PROB / COOLDOWN
+主素材：**账号在 QQ 里收藏的表情**（表情面板「爱心」那一栏）
+  · 由 OneBot `fetch_custom_face` 拉取，缓存在 ../sticker_favorites.json
+  · 30 分钟自动重取；自检命令：群里发「小幽表情」
+
+兜底 1：这个目录（storage/stickers/）里的本地图片
+  · 支持 jpg / jpeg / png / gif / webp / bmp
+  · 丢进来就生效，不用重启
+
+兜底 2：群友发过的表情（storage/sticker_cache.json，环形 300 条）
+
+触发：每条群消息 2%，同群最短间隔 180 秒
+      想调数值改 xiaoyo_bot/plugins/sticker.py 顶部的 PROB / COOLDOWN
