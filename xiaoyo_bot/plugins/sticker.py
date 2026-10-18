@@ -280,7 +280,7 @@ async def handle_sticker(bot: Bot, event: GroupMessageEvent) -> None:
 
 
 # ---------------- 自检命令 ----------------
-fav_cmd = on_command("小幽表情", aliases={"表情包", "小幽表情包", "收藏表情"},
+fav_cmd = on_command("小幽表情", aliases={"表情", "表情包", "小幽表情包", "收藏表情"},
                      priority=5, block=True)
 
 
