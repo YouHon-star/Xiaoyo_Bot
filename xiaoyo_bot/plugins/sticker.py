@@ -202,6 +202,27 @@ def should_send(gid: int, now: float | None = None, roll: float | None = None) -
     return dice(gid, now, roll)
 
 
+STICKER_SUMMARY = "[动画表情]"
+
+
+def sticker_segment(kind: str, val) -> MessageSegment:
+    """把素材打成「表情」段，而不是普通图片。
+
+    NapCat 用 picElement.picSubType 区分渲染方式：
+        0 = 普通图片（出现在聊天里是一张图）
+        1 = 表情 / 收藏表情（QQ 按表情样式渲染，点开是大图）
+    OneBot 侧对应 image 段的 sub_type 字段。之前只传 file，sub_type 缺省为 0，
+    所以收藏表情被当成图片发出去 —— 这就是「发的是图片不是表情包」的根因。
+    """
+    if kind == "file":
+        seg = MessageSegment.image(Path(val).read_bytes())
+    else:
+        seg = MessageSegment.image(str(val))
+    seg.data["sub_type"] = 1
+    seg.data["summary"] = STICKER_SUMMARY
+    return seg
+
+
 def is_sticker_segment(seg) -> bool:
     try:
         if seg.type != "image":
@@ -270,10 +291,7 @@ async def handle_sticker(bot: Bot, event: GroupMessageEvent) -> None:
         return
     kind, val = src
     try:
-        if kind == "file":
-            await sticker_watch.send(MessageSegment.image(Path(val).read_bytes()))
-        else:
-            await sticker_watch.send(MessageSegment.image(val))
+        await sticker_watch.send(sticker_segment(kind, val))
     except Exception:  # noqa: BLE001  QQ 图链会过期，失败就剔掉
         if kind != "file":
             _forget(str(val))
@@ -319,6 +337,4 @@ async def handle_fav(event: MessageEvent) -> None:
         return
     await fav_cmd.send(head)          # 先报数量，再发一张
     kind, val = src
-    if kind == "file":
-        await fav_cmd.finish(MessageSegment.image(Path(val).read_bytes()))
-    await fav_cmd.finish(MessageSegment.image(str(val)))
+    await fav_cmd.finish(sticker_segment(kind, val))
