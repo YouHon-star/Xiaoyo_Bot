@@ -1,7 +1,8 @@
-"""群聊复读参加：同一句话被 3 个不同的人重复后，小幽自动补一句「+1」参加。
+"""群聊复读参加：同一句话连续出现 3 遍，小幽自动补一句「+1」参加。
 
 规则（都可调，见下面常量）：
-  · 90 秒窗口内，同一句原文被 ≥3 个不同 QQ 发过 → 触发一次
+  · 连续 3 条**相同原文**（在 90 秒窗口内）→ 触发一次
+    ★ 不要求不同人：同一个人连发三遍「1」「1」「1」也算（2026-10-19 用户拍板）
   · 触发后本群 10 分钟内不再触发（防刷）
   · 只参与纯文本；图片/表情/超长句/命令（以「小幽」「/」开头）不算
   · 不统计机器人自己的消息（否则会和自己的 +1 套娃）
@@ -15,7 +16,7 @@ from nonebot import on_message
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
 
 WINDOW = 90.0          # 多久之内的重复算「同一轮复读」
-MIN_SENDERS = 3        # 至少要几个不同的人发过
+MIN_REPEAT = 3         # 同一句连续出现几次就接（不区分谁发的）
 COOLDOWN = 600.0       # 触发后本群冷却
 MAX_LEN = 40           # 超过这个长度不参与（长段落不是复读）
 REPLY = "+1"           # 小幽参加时发的内容
@@ -39,6 +40,16 @@ def is_candidate(text: str) -> bool:
     return True
 
 
+def _tail_run(entries: list[tuple[float, int, str]], text: str) -> int:
+    """末尾连续等于 text 的条数（= 这句话的连续重复次数）。"""
+    n = 0
+    for _, _, s in reversed(entries):
+        if s != text:
+            break
+        n += 1
+    return n
+
+
 def note(gid: int, uid: int, text: str, now: float | None = None) -> bool:
     """记一条群消息；返回 True 表示「该补一句 +1 了」。"""
     now = time.time() if now is None else now
@@ -53,8 +64,7 @@ def note(gid: int, uid: int, text: str, now: float | None = None) -> bool:
     entries = entries[-16:]
     _streaks[gid] = entries
 
-    senders = {u for _, u, s in entries if s == t}
-    if len(senders) < MIN_SENDERS:
+    if _tail_run(entries, t) < MIN_REPEAT:
         return False
     if now - _last_fire.get(gid, 0.0) < COOLDOWN:
         return False
