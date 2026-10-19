@@ -30,6 +30,7 @@
 | **水鱼 AP50** | `commands/mai_score.py` | `ap50` 原仅支持落雪；现水鱼也可用：拉取全部成绩 → 只保留 AP/AP+ → 按官方定数重算 All Perfect 50（Top 35/15）。落雪仍走原生 `/bests/ap` 接口 |
 | **B35/B15 分组依据** | `commands/mai_score.py` | ⚠️ 旧曲/新曲按 **`Song.isnew`**（是否当前版本新曲）划分，**不是**谱面类型 SD/DX —— 旧版本的 DX 谱面属于旧曲组(进 B35)。已用官方 b50 实测核对（官方 sd 组 35 条 `isnew` 全 False 含 31 条 DX 谱面，dx 组 15 条全 True） |
 | 定数显示自洽 | `core/image/base.py` | `whiledraw` 的「定数 -> 单曲Rating」改为优先用 `info.level_value`（拟合50 会改写它），否则回退官方定数表。普通 b50 值不变 |
+| **PC50 钩子** | `core/image/base.py`、`core/image/best50.py`、`core/image/pc50.py` | 抽出两个可覆盖钩子：`_row_detail_text(ds, info)`（行内文本，默认 `定数 -> Rating`）、`_score_summary()`（无称号时奖杯位汇总，默认 `B35: x + B15: y = rating`）；新增 `PlayerPC50(PlayerBest50)` 只覆盖这两处 → 按 **playCount** 排行，右侧数字=PC、行内「定数 · PCn」、汇总 `PC35 + PC15`。普通 b50 输出不变（钩子默认值与旧硬编码逐字相同） |
 
 ## 绘制中提示的 20 处分布
 
