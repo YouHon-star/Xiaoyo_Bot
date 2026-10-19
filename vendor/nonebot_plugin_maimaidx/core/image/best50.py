@@ -88,6 +88,13 @@ class PlayerBest50(ScoreBaseImage):
             return static / "mai" / type / file
         return await online_assets(f"/{type}/{file}")
 
+    def _score_summary(self) -> str:
+        """无称号时奖杯位显示的汇总文本（PC50 覆盖它改成 PC35 / PC15）。"""
+        return (
+            f"B35: {self.best50.sd_total} + B15: {self.best50.dx_total}"
+            f" = {self.player.rating}"
+        )
+
     async def draw(self) -> str:
         """
         绘制Best50
@@ -172,10 +179,7 @@ class PlayerBest50(ScoreBaseImage):
             ).resize((270, 27))
             font = self._sy
         else:
-            trophy_title = (
-                f"B35: {self.best50.sd_total} + B15: {self.best50.dx_total}"
-                f" = {self.player.rating}"
-            )
+            trophy_title = self._score_summary()
             rating = Image.open(shougou_dir / "UI_CMN_Shougou_Rainbow.png").resize(
                 (270, 27)
             )

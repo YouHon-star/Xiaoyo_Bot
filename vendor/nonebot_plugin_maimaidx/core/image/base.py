@@ -92,6 +92,10 @@ class ScoreBaseImage(AssetsImage):
         self._title_bg = self._themed_image(theme, "title.png")
         self._title_lengthen_bg = self._themed_image(theme, "title_lengthen.png")
 
+    def _row_detail_text(self, ds, info) -> str:
+        """行内「定数 -> 单曲Rating」文本。PC50 之类会把右边换成别的指标。"""
+        return f"{ds} -> {info.rating}"
+
     def whiledraw(self, data: list[PlayedResult], dx: bool = False, list_y: int = 0):
         gap = 114
         dx_step = 276
@@ -196,7 +200,7 @@ class ScoreBaseImage(AssetsImage):
                 x + 93,
                 y + 65,
                 15,
-                f"{ds} -> {info.rating}",
+                self._row_detail_text(ds, info),
                 self._diff_text_color[info.level_index],
                 anchor="lm",
             )
