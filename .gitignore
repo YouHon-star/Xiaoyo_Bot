@@ -190,3 +190,9 @@ storage/maimai/mai/plate_table/
 
 # 曲绘/rating 静态资源：593M，不进版本库（见 README「静态资源」）
 storage/maimai/
+
+# 闭源：舞萌账号数据读写相关（本地保留，不入库）
+xiaoyo_bot/plugins/mai_modify.py
+storage/help_images/help_tech.jpg
+storage/mai_modify.json
+storage/mai_modify*.log
