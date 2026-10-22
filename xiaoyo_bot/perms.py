@@ -1,6 +1,6 @@
-"""权限档位（被 pc50 / help / 管理指令共用）。
+"""权限档位（被 help / 管理指令 / 闭源插件共用）。
 
-数据源：``storage/permissions.json``，结构::
+数据源：``storage/mai_modify.json``（档位名单）+ ``storage/permissions.json``（admin_list），结构::
 
     {
       "allow":       [QQ...],   # 基础白名单

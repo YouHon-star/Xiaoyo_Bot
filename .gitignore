@@ -196,3 +196,5 @@ xiaoyo_bot/plugins/mai_modify.py
 storage/help_images/help_tech.jpg
 storage/mai_modify.json
 storage/mai_modify*.log
+xiaoyo_bot/plugins/pc50.py
+storage/pc50/
