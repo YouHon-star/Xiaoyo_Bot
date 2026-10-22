@@ -85,3 +85,8 @@ def eff_tier(uid: int, gid: int | None = None) -> str:
     if t in ("admin", "tech"):
         return "tech" if group_allowed(gid) else "basic"
     return t
+
+
+def gate_tech(uid: int, gid: int | None = None) -> str:
+    """没有高级档就返回提示文案；有则返回空串。"""
+    return "" if eff_tier(uid, gid) == "tech" else "抱歉您没有权限"
