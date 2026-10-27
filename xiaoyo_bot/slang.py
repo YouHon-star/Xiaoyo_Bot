@@ -377,10 +377,19 @@ def _tech_groups() -> set[str]:
 
 
 def learn_scopes(conf: dict | None = None) -> set[str]:
-    """允许采集的会话 key（'g:群号' / 'p:QQ'）。groups 为空 ⇒ 用 tech_groups 当白名单。"""
+    """允许采集的会话 key（'g:群号' / 'p:QQ'）。
+
+    顺序：learn.groups 显式配置 → 本地档位名单（storage/mai_modify.json 的 tech_groups）
+    → 两者都没有（例如公开仓库新 clone，私有配置文件不存在）就退化成「所有群都学」。
+    最后这一步是必要的：否则新部署会静默地一个词都学不到。
+    """
     conf = conf or load_conf()
     groups = [str(g) for g in (conf["learn"].get("groups") or [])]
-    keys = {f"g:{g}" for g in (groups or _tech_groups())}
+    if groups:
+        keys = {f"g:{g}" for g in groups}
+    else:
+        tech = _tech_groups()
+        keys = {f"g:{g}" for g in tech} if tech else {"g:*"}
     if conf["learn"].get("private"):
         keys.add("p:*")
     return keys
@@ -388,9 +397,11 @@ def learn_scopes(conf: dict | None = None) -> set[str]:
 
 def scope_allowed(scope: str, conf: dict | None = None) -> bool:
     allowed = learn_scopes(conf)
-    if scope in allowed or "p:*" in allowed and scope.startswith("p:"):
+    if scope in allowed:
         return True
-    return False
+    if scope.startswith("p:") and "p:*" in allowed:
+        return True
+    return scope.startswith("g:") and "g:*" in allowed
 
 
 def scope_of(event) -> str:
