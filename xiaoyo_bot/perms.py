@@ -56,6 +56,20 @@ def is_owner(uid: int) -> bool:
     return uid == OWNER_QQ
 
 
+def is_blacklisted(uid: int) -> bool:
+    """黑名单：``mai_modify.json.deny`` ∪ ``permissions.json.black_list``。
+
+    两份名单历史上各自为政（前者给科技功能，后者是模板遗留），普通功能放行时
+    要同时尊重两边 —— 只查 deny 会让 permissions.json 里的号照样能用。
+    """
+    if uid in load_data()["deny"]:
+        return True
+    try:
+        return uid in json.loads(PERM_FILE.read_text(encoding="utf-8")).get("black_list", [])
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
 def tier_of(uid: int) -> str:
     """返回 admin / tech / basic / deny / none。"""
     d = load_data()

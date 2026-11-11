@@ -191,10 +191,13 @@ storage/maimai/mai/plate_table/
 # 曲绘/rating 静态资源：593M，不进版本库（见 README「静态资源」）
 storage/maimai/
 
-# 闭源：舞萌账号数据读写相关（本地保留，不入库）
+# 闭源：只限「向账号写数据」的部分（本地保留，不入库）
 xiaoyo_bot/plugins/mai_modify.py
 storage/help_images/help_tech.jpg
 storage/mai_modify.json
 storage/mai_modify*.log
-xiaoyo_bot/plugins/pc50.py
+# 只读功能的缓存（含玩家成绩，属隐私，不入库）；pc50.py 源码本身已开源
 storage/pc50/
+
+# 藏品图片下载缓存（运行时生成）
+storage/item_assets/

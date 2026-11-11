@@ -67,6 +67,9 @@ DEFAULTS: dict = {
         "prob": 0.3,
         "daily_cap": 3,              # 每会话每天最多主动几次
         "group_daily_cap": 1,        # 群里更克制（每个群每天最多 1 次）
+        "round_cap": 1,              # 单轮检查全站最多发几条（防「每个群同时冒一句」）
+        "min_real_lines": 2,         # 最近得有这么多条真人发言才开口
+        "max_age_min": 360,          # 超过这么久以前的话不算「最近」
         "quiet_from": 0,
         "quiet_to": 7,               # 0~7 点不主动
         "private": True,
@@ -183,10 +186,59 @@ class ConvState:
     day: str = ""
     count: int = 0
     recent: deque = field(default_factory=lambda: deque(maxlen=12))
+    recent_ts: deque = field(default_factory=lambda: deque(maxlen=12))
 
     @property
     def key(self) -> str:
         return f"{self.kind}:{self.cid}"
+
+    def align_ts(self) -> None:
+        """recent 与 recent_ts 长度对齐（老文件里没有时间戳的按 0 = 未知处理）。"""
+        if len(self.recent_ts) != len(self.recent):
+            self.recent_ts = deque([0.0] * len(self.recent), maxlen=self.recent.maxlen or 12)
+
+
+# ============================ ④ 主动：上下文清洗 ============================
+_SENDER_RE = re.compile(r"^[^：:]{1,24}[：:]")
+_HAS_WORD_RE = re.compile(r"[0-9A-Za-z\u4e00-\u9fff]")
+
+
+def msg_body(line: str) -> str:
+    """去掉「昵称：」前缀，只留正文。"""
+    return _SENDER_RE.sub("", (line or "").strip(), count=1).strip()
+
+
+def has_content(line: str) -> bool:
+    """这条记录里有没有真东西（图片/表情/纯标点 → 没有）。"""
+    return bool(_HAS_WORD_RE.search(msg_body(line)))
+
+
+def recent_lines(st: ConvState, max_age_s: float = 21600.0, limit: int = 6) -> list[str]:
+    """挑出「能当话题接着聊」的最近对话（按时间正序）。
+
+    2026-11-02 事故：主动开口给每个群都发了一句莫名其妙的话（「你今天气色不错」
+    「周末愉快」「开挂必被封号」）。原因有三 ——
+      ① 图片/表情消息 get_plaintext() 为空，却被当成一条记录塞进 recent，
+         把真正有内容的句子从 deque(12) 里挤掉，模型看到的「最近对话」大面积空白；
+      ② recent 跨天持久化，昨晚的话今天还当「最近」用；
+      ③ 没有「有内容」的下限，只有一句「?」也照样开口。
+    所以这里做三件事：过滤空/纯标点、丢弃超过 max_age_s 的旧话、只取最后 limit 条。
+    """
+    st.align_ts()
+    pairs = list(zip(st.recent_ts, st.recent))[-24:]
+    now = time.time()
+    keep = []
+    for ts, line in pairs:
+        if not has_content(line):
+            continue
+        try:
+            tsf = float(ts or 0)
+        except (TypeError, ValueError):
+            tsf = 0.0
+        if tsf and now - tsf > max_age_s:
+            continue
+        keep.append(line)
+    return keep[-limit:]
 
 
 def proactive_reason(st: ConvState, now: float, p: dict, hour: int,
@@ -232,6 +284,8 @@ class Store:
                                last_proactive=float(v.get("last_proactive", 0)),
                                day=str(v.get("day", "")), count=int(v.get("count", 0)))
                 st.recent.extend(v.get("recent") or [])
+                st.recent_ts.extend(v.get("recent_ts") or [])
+                st.align_ts()
                 self.convs[k] = st
             except (ValueError, TypeError):
                 continue
@@ -239,7 +293,8 @@ class Store:
     def save(self) -> None:
         data = {"convs": {k: {"last_active": s.last_active, "last_proactive": s.last_proactive,
                               "day": s.day, "count": s.count,
-                              "recent": list(s.recent)} for k, s in self.convs.items()}}
+                              "recent": list(s.recent), "recent_ts": list(s.recent_ts)}
+                          for k, s in self.convs.items()}}
         tmp = self.path.with_suffix(".tmp")
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -382,6 +437,27 @@ def strip_emote_brackets(text: str) -> str:
     return s.strip()
 
 
+# ============================ 媒体占位符清理（[图片] / [图片：xxx]）============================
+# 现象（2026-10-28 群 373593105）：提示词里「消息里出现 [图片：…]」被模型当成**输出格式**，
+# 于是它照抄成「[图片] 这谁啊 ⏎ [图片] 这地方我认得 ⏎ [图片] 这字写得什么鬼」，
+# 三句全是提示词里的例句原话，用户看到的就是三条莫名其妙的 [图片] 前缀消息。
+# 提示词已改成不带可抄例句 + 明确禁止照抄，这里再做一层代码兜底。
+_MEDIA_PH_RE = re.compile(
+    r"[\[［【]\s*(?:图片|图像|照片|截图|视频|表情|动画表情|image|img|pic|photo|video)"
+    r"\s*(?:[:：][^\]］】]*)?[\]］】]"
+)
+
+
+def strip_media_placeholders(text: str) -> str:
+    """删掉模型照抄出来的 [图片]/[图片：xxx] 占位符（那是给模型看的标注，不是 QQ 消息段）。"""
+    s = str(text or "")
+    s = _MEDIA_PH_RE.sub("", s)
+    # 嵌套写法（[【图片】]）清完会剩一对空括号，再收一遍
+    s = re.sub(r"[\[［【]\s*[\]］】]", "", s)
+    s = re.sub(r"[ \t]{2,}", " ", s)
+    return s.strip()
+
+
 # ============================ 发送（节奏 + 引用 + 风控）============================
 def _event_of(handler) -> MessageEvent | None:
     ev = getattr(handler, "event", None)
@@ -407,7 +483,8 @@ async def send_with_pacing(handler, content: str) -> None:
         return
     pacer = Pacer(CFG["send"])
     limit = int(CFG["send"].get("burst_max", 3))
-    segs = [strip_emote_brackets(strip(s)) for s in pacer.clamp(segs, limit=limit)]
+    segs = [strip_media_placeholders(strip_emote_brackets(strip(s)))
+            for s in pacer.clamp(segs, limit=limit)]
     segs = [s for s in segs if s]
     if not segs:
         return
@@ -486,6 +563,47 @@ async def _llm_say(system: str, user: str) -> str:
         return ""
 
 
+def remember_own_say(key: str, text: str) -> None:
+    """把主动开口的那句话写进 llmchat 历史，否则用户接着它回话时模型看不见。
+
+    2026-10-29 私聊「答非所问」的根因就是这个：
+      09:05 主动发「天气不错呢」、10:34 主动发「天气真好适合出去玩」（都不进 llmchat 历史）
+      11:53 用户回「天气不错在哪？都下雨了，现在阴天」
+      模型历史里只有昨天 18:57 的安慰话 → 只能瞎猜 → 回「天气嘛，各有各的好吧 / 你更喜欢哪种天气？」
+    写回用 llmchat 自己的容器，这样下一次 process_messages 组装 prompt 时就能看到。
+    """
+    try:
+        import nonebot_plugin_llmchat as L
+    except Exception:                                    # noqa: BLE001
+        return
+    try:
+        kind, raw = key.split(":", 1)
+        cid = int(raw)
+        holder = L.group_states if kind == "group" else L.private_chat_states
+        holder[cid].history.append({"role": "assistant", "content": text})
+    except Exception as exc:                             # noqa: BLE001
+        logger.debug(f"[humanlike] 主动发言写回历史失败 {key}：{exc}")
+
+
+def prune_left_groups(joined: set[int] | None) -> list[str]:
+    """把「已经不在的群」从主动名单里摘掉，返回被摘掉的 key。
+
+    2026-10-29 群 1102201454 把 bot 踢了，主动循环还在按旧名单每轮发一次，
+    每次都吃一条「发送失败，你已被移出该群」的 WARNING（07:15 / 08:19 / 11:53）。
+    每次循环拉一次群列表，不在了就从 STORE 删掉并落盘。
+    joined=None（拉取失败）时什么都不做 —— 宁可这轮照旧，也别误删还在的群。
+    """
+    if joined is None:
+        return []
+    gone = [k for k, s in STORE.convs.items() if s.kind == "group" and s.cid not in joined]
+    for k in gone:
+        STORE.convs.pop(k, None)
+        logger.info(f"[humanlike] 已不在该群，停止主动开口并移除会话 {k}")
+    if gone:
+        STORE.save()
+    return gone
+
+
 async def _proactive_loop() -> None:
     p = CFG["proactive"]
     rng = random.Random()
@@ -505,22 +623,47 @@ async def _proactive_loop() -> None:
         bot = next((b for b in bots if b), None)
         if bot is None:
             continue
-        for st in list(STORE.convs.values()):
+        try:
+            joined = {int(g["group_id"]) for g in await bot.get_group_list()}
+        except Exception as exc:                          # noqa: BLE001
+            logger.debug(f"[humanlike] 拉群列表失败，本轮不清理名单：{exc}")
+            joined = None
+        prune_left_groups(joined)
+        cap_round = int(p.get("round_cap", 1))
+        min_lines = int(p.get("min_real_lines", 2))
+        max_age_s = float(p.get("max_age_min", 360)) * 60.0
+        # 顺序打散：不然总是同一个群先中奖，别的群永远轮不到
+        convs = list(STORE.convs.values())
+        rng.shuffle(convs)
+        sent_this_round = 0
+        for st in convs:
+            if sent_this_round >= cap_round:
+                break
             cap = int(p.get("group_daily_cap" if st.kind == "group" else "daily_cap", 3))
             reason = proactive_reason(st, now, p, hour, rng, cap)
             if reason != "ok":
                 continue
-            recent = " / ".join(list(st.recent)[-6:]) or "（最近没聊什么）"
+            lines = recent_lines(st, max_age_s=max_age_s, limit=6)
+            if len(lines) < min_lines:
+                logger.debug(
+                    f"[humanlike] 主动跳过 {st.key}：最近没有可接的话题"
+                    f"（有内容的真人发言只有 {len(lines)} 条）"
+                )
+                continue
+            recent = " / ".join(lines)
             system = (
                 "你叫小幽，是个真人在 QQ 上聊天，不是 AI。"
                 "现在对话安静了一会儿，你想主动开口一句，像随手想起什么就说。"
+                "只能接「最近的对话」里已经出现过的人或事；"
+                "不许问候（你好 / 在吗 / 吃饭了吗 / 周末愉快）、不许聊天气、"
+                "不许编对话里没出现的东西；实在没得接就别说话。"
                 "只要一句，10 到 20 个字，不解释、不铺垫、不用 emoji、不加句号，不提自己是 AI。"
             )
             text = await _llm_say(system, f"最近的对话：{recent}\n现在说一句：")
             if not text:
                 continue
-            segs = [strip_emote_brackets(s.strip().rstrip("。.")) for s in text.split("<botbr>")
-                    if s.strip()][:1]
+            segs = [strip_media_placeholders(strip_emote_brackets(s.strip().rstrip("。.")))
+                    for s in text.split("<botbr>") if s.strip()][:1]
             segs = [s for s in segs if s]
             if not segs:
                 continue
@@ -535,6 +678,8 @@ async def _proactive_loop() -> None:
             except Exception as exc:                 # noqa: BLE001
                 logger.warning(f"[humanlike] 主动发言发送失败 {st.key}：{exc}")
                 continue
+            remember_own_say(st.key, segs[0])
+            sent_this_round += 1
             st.last_proactive = now
             st.count = (st.count + 1) if st.day == datetime.now().strftime("%Y-%m-%d") else 1
             st.day = datetime.now().strftime("%Y-%m-%d")
@@ -556,7 +701,14 @@ async def _record(event: MessageEvent) -> None:
         else:
             st = STORE.get("private", event.user_id)
         st.last_active = time.time()
-        st.recent.append(format_with_sender(lambda e: e.get_plaintext(), event)[:200])
+        line = format_with_sender(lambda e: e.get_plaintext(), event).strip()[:200]
+        # 2026-11-02：图片/表情的消息正文是空的，别拿空串占 recent 的位子
+        # （deque(12) 被空串挤满后，主动开口看到的「最近对话」就是一片空白）
+        if has_content(line):
+            st.recent.append(line)
+            st.recent_ts.append(st.last_active)
+        elif not st.recent_ts:                        # 老状态没有时间戳，顺手对齐
+            st.align_ts()
         if random.random() < 0.05:                   # 抽样落盘，别每条消息都写
             STORE.save()
     except Exception as exc:                          # noqa: BLE001
