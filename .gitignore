@@ -193,7 +193,7 @@ storage/maimai/
 
 # 闭源：只限「向账号写数据」的部分（本地保留，不入库）
 xiaoyo_bot/plugins/mai_modify.py
-storage/help_images/help_tech.jpg
+storage/help_images/help_tech.jpg*
 storage/mai_modify.json
 storage/mai_modify*.log
 # 只读功能的缓存（含玩家成绩，属隐私，不入库）；pc50.py 源码本身已开源

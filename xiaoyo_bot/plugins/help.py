@@ -161,6 +161,13 @@ def in_tech_list(uid: int, gid: int | None = None) -> bool:
 
 
 def pick_help_image(uid: int, gid: int | None = None) -> Path | None:
+    """科技身份发科技版，其余发普通版。
+
+    ⚠️ 2026-11-11 用户明确口径：**本机部署有科技功能，科技名单照旧发 help_tech.jpg**；
+    公开仓库里 help_tech.jpg 被 .gitignore 挡住、不随仓库分发，clone 下来科技身份会
+    走下面的 fallback 拿到普通图 —— 这就是「远端统一普通图」的实现方式，
+    **不要再把这里改成一律普通图**（曾经改过一次，被用户纠正）。
+    """
     img = IMG_TECH if in_tech_list(uid, gid) else IMG_NORMAL
     if not img.exists():                      # 另一张在就用另一张，不回空
         img = IMG_NORMAL if img == IMG_TECH else IMG_TECH
