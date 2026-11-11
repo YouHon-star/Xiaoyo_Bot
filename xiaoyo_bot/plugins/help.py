@@ -161,9 +161,17 @@ def in_tech_list(uid: int, gid: int | None = None) -> bool:
 
 
 def pick_help_image(uid: int, gid: int | None = None) -> Path | None:
-    img = IMG_TECH if in_tech_list(uid, gid) else IMG_NORMAL
-    if not img.exists():                      # 另一张在就用另一张，不回空
-        img = IMG_NORMAL if img == IMG_TECH else IMG_TECH
+    """统一发普通帮助图。
+
+    2026-11-11 用户要求：把科技版帮助图（help_tech.jpg）从科技帮助里「挪掉」——
+    那张图上写着「b50 / PC50 闭源」，跟现在的口径（只读开源、只有写入类闭源）不符。
+    科技用户不再单独出图，一律发普通版；`in_tech_list` 函数保留不删，
+    回退时把下面注释的旧写法放回去即可（它现在只被注释引用，没有活跃调用）。
+    """
+    # 旧写法（科技用户发科技版）留作回退：IMG_TECH if in_tech_list(uid, gid) else IMG_NORMAL
+    img = IMG_NORMAL
+    if not img.exists() and IMG_TECH.exists():   # 普通图缺了才退化到科技版
+        img = IMG_TECH
     return img if img.exists() else None
 
 
